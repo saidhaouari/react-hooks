@@ -1,42 +1,106 @@
-import React, { useState, useEffect } from 'react';
-import './App.css';
-import MovieList from './components/MoviesList';
+import React, { useReducer, useEffect } from "react";
+import "./App.css";
+import Header from "./Header";
+import Movie from "./movie";
+import Search from "./search";
+import StarRatingComponent from 'react-star-rating-component';
+
+
+const MOVIE_API_URL = "https://www.omdbapi.com/?s=man&apikey=4a3b711b";
+
+
+const initialState = {
+  loading: true,
+  movies: [],
+  errorMessage: null
+};
+
+
+const reducer = (state, action) => {
+  switch (action.type) {
+    case "SEARCH_MOVIES_REQUEST":
+      return {
+        ...state,
+        loading: true,
+        errorMessage: null
+      };
+    case "SEARCH_MOVIES_SUCCESS":
+      return {
+        ...state,
+        loading: false,
+        movies: action.payload
+      };
+    case "SEARCH_MOVIES_FAILURE":
+      return {
+        ...state,
+        loading: false,
+        errorMessage: action.error
+      };
+    default:
+      return state;
+  }
+};
+
+
 
 const App = () => {
-	const [movies, setMovies] = useState([
-		{
-			Title: 'Star Wars: Episode IV - A New Hope',
-			Year: '1977',
-			imdbID: 'tt0076759',
-			Type: 'movie',
-			Poster:
-				'https://m.media-amazon.com/images/M/MV5BNzVlY2MwMjktM2E4OS00Y2Y3LWE3ZjctYzhkZGM3YzA1ZWM2XkEyXkFqcGdeQXVyNzkwMjQ5NzM@._V1_SX300.jpg',
-		},
-		{
-			Title: 'Star Wars: Episode V - The Empire Strikes Back',
-			Year: '1980',
-			imdbID: 'tt0080684',
-			Type: 'movie',
-			Poster:
-				'https://m.media-amazon.com/images/M/MV5BYmU1NDRjNDgtMzhiMi00NjZmLTg5NGItZDNiZjU5NTU4OTE0XkEyXkFqcGdeQXVyNzkwMjQ5NzM@._V1_SX300.jpg',
-		},
-		{
-			Title: 'Star Wars: Episode VI - Return of the Jedi',
-			Year: '1983',
-			imdbID: 'tt0086190',
-			Type: 'movie',
-			Poster:
-				'https://m.media-amazon.com/images/M/MV5BOWZlMjFiYzgtMTUzNC00Y2IzLTk1NTMtZmNhMTczNTk0ODk1XkEyXkFqcGdeQXVyNTAyODkwOQ@@._V1_SX300.jpg',
-		},
-	]);
+  const [state, dispatch] = useReducer(reducer, initialState);
 
-	return (
-		<div className='container-fluid movie-app'>
-			<div className='row'>
-				<MovieList movies={movies} />
-			</div>
-		</div>
-	);
+    useEffect(() => {
+    
+        fetch(MOVIE_API_URL)
+            .then(response => response.json())
+            .then(jsonResponse => {
+        
+            dispatch({
+                type: "SEARCH_MOVIES_SUCCESS",
+                payload: jsonResponse.Search
+        	});
+      	});
+  	}, []);
+
+    const search = searchValue => {
+    	dispatch({
+      	type: "SEARCH_MOVIES_REQUEST"
+    	});
+	
+        fetch(`https://www.omdbapi.com/?s=${searchValue}&apikey=4a3b711b`)
+      	.then(response => response.json())
+      	.then(jsonResponse => {
+        	if (jsonResponse.Response === "True") {
+          	dispatch({
+                type: "SEARCH_MOVIES_SUCCESS",
+                payload: jsonResponse.Search
+          	});
+        	} else {
+          	dispatch({
+                type: "SEARCH_MOVIES_FAILURE",
+                error: jsonResponse.Error
+          	});
+          }
+      	});
+	  };
+
+    const { movies, errorMessage, loading } = state;
+
+    return (
+    <div className="App">
+      <Header text="HOOKED" />
+      <Search search={search} />
+      <p className="App-intro"><StarRatingComponent /></p>
+      <div className="movies">
+        {loading && !errorMessage ? (
+          <span>loading... </span>
+        ) : errorMessage ? (
+          <div className="errorMessage">{errorMessage}</div>
+        ) : (
+          movies.map((movie, index) => (
+            <Movie key={`${index}-${movie.Title}`} movie={movie} />
+          ))
+        )}
+      </div>
+    </div>
+  );
 };
 
 export default App;
